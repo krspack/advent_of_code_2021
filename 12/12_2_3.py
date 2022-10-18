@@ -3,6 +3,13 @@ import csv
 import pandas as pd
 import matplotlib.pyplot as plt
 
+"""
+postup:
+upravit routes tak, aby se tam ukladaly vsechny cesty, ne jen ta nejkratsi
+pak pridat dalsi podminku ohledne opakovaneho prochazeni
+pak vyrobit funkci, co upravuje cave-vstup do tabulek
+"""
+
 
 class Edge:  # connection between stations
     def __init__(self, edge_id, vertex1, vertex2, time, line):
@@ -179,7 +186,6 @@ tube = Graph()
 
 # call the find_route function
 print(tube.find_route('start', 'end'))
-
 
 
 
