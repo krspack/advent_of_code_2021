@@ -4,10 +4,30 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 """
+
+
+
+
+
 postup:
-upravit routes tak, aby se tam ukladaly vsechny cesty, ne jen ta nejkratsi
-pak pridat dalsi podminku ohledne opakovaneho prochazeni
-pak vyrobit funkci, co upravuje cave-vstup do tabulek
+1. upravit routes tak, aby se tam ukladaly vsechny cesty, ne jen ta nejkratsi
+2. pak pridat dalsi podminku ohledne opakovaneho prochazeni
+3. pak vyrobit funkci, co upravuje cave-vstup do tabulek
+4. pak zjednodusit:
+unvisited = jenom seznam
+atd
+
+ad 1:
+Puvodne se neustale prepisoval jeden seznam stanic podle toho, jestli se naslo kratsi reseni.
+Pro kazdou stanici mel Routes jenom jednu odpoved. End byla jen jedna ze stanic, skript to ale stejne musel vypocitat pro vsechny.
+Jak to zmenit?
+Routes bude promenna existujici mimo prochazeci funkci. Kazde zavolani prochazeci funkce vygeneruje jednu cestu a zapise ji do Routes.
+Proto je mozne mit routes jako parametr instance tridy Vertex.
+Z toho plune: Slovnik Visited se nebude v ramci prochazeci funkce vynulovavat, Unvisited taky ne.
+Je mozne je mit jako parametry instance Graph:
+    self.visited_vertices = []
+    self.unvisited_vertices = []
+
 """
 
 
@@ -30,12 +50,15 @@ class Vertex:  # tube station
         self.visited = False
         self.neighbours = []  # station_id
         self.edges = []  # edge_id
+        self.routes = []
 
 class Graph:    # tube network
   def __init__(self, directed = False):
     self.directed = directed
     self.all_vertices = all_vertices
     self.all_edges = all_edges
+    self.visited_vertices = []
+    self.unvisited_vertices = [vertex.name for vertex in all_vertices.values()]
 
   def get_vertex(self, vertex_id):
       return self.all_vertices[vertex_id]
@@ -74,6 +97,7 @@ class Graph:    # tube network
         # 1. travese vertices
         # =========================
         # input turned into corresponding vertices:
+        """
         start_hub_id = int(stations_codelist.loc[start]['hub_id'])
         for station_id in self.all_vertices:
             if station_id[0] == start_hub_id:
@@ -84,30 +108,34 @@ class Graph:    # tube network
             if station_id[0] == end_hub_id:
                 end = self.get_vertex(station_id)
                 break
+        """
+        start = all_vertices[(1, 10)]
+        end = all_vertices[(2, 10)]
 
         # variables outside the main for-loop
-        unvisited = dict([(id_n, 1000) for (id_n, vertex) in self.all_vertices.items()])
+        self.unvisited_vertices =
+        self.visited_vertices = []
+        # self.unvisited_vertices = dict([(id_n, 1000) for (id_n, vertex) in self.all_vertices.items()])
         unvisited[start.station_id] = 0
         visited = []
         current = start
-        routes = {current.station_id: [{'name': current.name, 'station_id': current.station_id}]}
+        # routes = {x.name: [[x.name]] for x in all_vertices.values()}
+        # routes = {current.name: [[current.name]]}  # upraveno  - zohlednuje to, ze tech cest tam ma byt vic? ne. Posunout routes nad celou funkci,
+        #.. aby se do ni mohlo zapsat neco noveho pri kazdem prochazeni...
+        # tzn. funkci budu spoustet opakovane (jinou funkci) a bude zapisovat pokazde do jednoho Routes
         latest = None
 
         # traverse vertices:
         while end.visited == False:
-
             for neighbour_id in current.neighbours:
                 neighbour = self.get_vertex(neighbour_id)
                 edge_to_neighbour = self.get_edge_between(current, neighbour)  #[]
-                if edge_to_neighbour.time == time_to_change_lines and (edge_to_neighbour.vertex1 == start.station_id or edge_to_neighbour.vertex2 == end.station_id):
-                    edge_to_neighbour.time = 0
 
                 # store the quickest path to each visited vertex in a dict called Routes:
                 if neighbour.station_id in unvisited:
-                    if unvisited[neighbour.station_id] > (unvisited[current.station_id] + edge_to_neighbour.time):
-                        unvisited[neighbour.station_id] = unvisited[current.station_id] + edge_to_neighbour.time
-                        routes[neighbour.station_id] = routes[current.station_id][:]
-                        routes[neighbour.station_id].append({"name": neighbour.name, 'station_id': neighbour.station_id})
+                    route_to_neighbour = routes[current.name].append(neighbour.name) # ???
+                    if route_to_neighbour not in neighbour.routes:
+                        neighbour.routes.append(route_to_neighbour)
 
             # make sure visited vertices will not be visited again. Close the loop by changing Current:
             current.visited = True
@@ -118,7 +146,7 @@ class Graph:    # tube network
             latest = current
             current = self.get_vertex(next_key)
 
-        print(routes[end.station_id])
+        print(end.routes)  # uprav
 
         return 'from: {} to: {}, duration: {} minutes'.format(start.name, end.name, visited[-1])
 
@@ -186,6 +214,8 @@ tube = Graph()
 
 # call the find_route function
 print(tube.find_route('start', 'end'))
+
+
 
 
 
