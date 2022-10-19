@@ -32,7 +32,7 @@ Je mozne je mit jako parametry instance Graph:
 
 
 class Edge:  # connection between stations
-    def __init__(self, edge_id, vertex1, vertex2, time, line):
+    def __init__(self, edge_id, vertex1, vertex2, line, time = 1):
        self.edge_id = edge_id
        self.vertex1 = vertex1   # id-tuple of the vertex
        self.vertex2 = vertex2    # id-tuple of the vertex
@@ -58,7 +58,7 @@ class Graph:    # tube network
     self.all_vertices = all_vertices
     self.all_edges = all_edges
     self.visited_vertices = []
-    self.unvisited_vertices = [vertex.name for vertex in all_vertices.values()]
+    self.unvisited_vertices = []
 
   def get_vertex(self, vertex_id):
       return self.all_vertices[vertex_id]
@@ -90,7 +90,7 @@ class Graph:    # tube network
                 return edge
 
 
-  def find_route(self, start, end):
+  def find_route(self):
         # Dijkstra algorithm implementation to navigate the London tube
         # input: names of tube stations in string format, case sensitive
 
@@ -113,42 +113,39 @@ class Graph:    # tube network
         end = all_vertices[(2, 10)]
 
         # variables outside the main for-loop
-        self.unvisited_vertices =
-        self.visited_vertices = []
-        # self.unvisited_vertices = dict([(id_n, 1000) for (id_n, vertex) in self.all_vertices.items()])
-        unvisited[start.station_id] = 0
-        visited = []
-        current = start
-        # routes = {x.name: [[x.name]] for x in all_vertices.values()}
-        # routes = {current.name: [[current.name]]}  # upraveno  - zohlednuje to, ze tech cest tam ma byt vic? ne. Posunout routes nad celou funkci,
-        #.. aby se do ni mohlo zapsat neco noveho pri kazdem prochazeni...
-        # tzn. funkci budu spoustet opakovane (jinou funkci) a bude zapisovat pokazde do jednoho Routes
-        latest = None
 
-        # traverse vertices:
-        while end.visited == False:
-            for neighbour_id in current.neighbours:
-                neighbour = self.get_vertex(neighbour_id)
-                edge_to_neighbour = self.get_edge_between(current, neighbour)  #[]
+        self.unvisited_vertices = dict([(vertex.station_id, 1000) for (id_n, vertex) in self.all_vertices.items()])
+        self.unvisited_vertices[start.station_id] = 0
 
-                # store the quickest path to each visited vertex in a dict called Routes:
-                if neighbour.station_id in unvisited:
-                    route_to_neighbour = routes[current.name].append(neighbour.name) # ???
-                    if route_to_neighbour not in neighbour.routes:
-                        neighbour.routes.append(route_to_neighbour)
+        def get_one_route():
+            one_route = [start.station_id]
+            current = start
+            latest = None
+            while end.visited == False:
+                for neighbour_id in current.neighbours:
+                    neighbour = self.get_vertex(neighbour_id)
+                    edge_to_neighbour = self.get_edge_between(current, neighbour)  #[]
 
-            # make sure visited vertices will not be visited again. Close the loop by changing Current:
-            current.visited = True
-            visited.append(unvisited.pop(current.station_id))
-            for station_id, overall_time in unvisited.items():
-                if overall_time == min(unvisited.values()):
-                    next_key = station_id
-            latest = current
-            current = self.get_vertex(next_key)
+                    # store the quickest path to each visited vertex in graph.unvisited = [[vertex.name: number], ...]
+                    if neighbour.station_id in self.unvisited_vertices:
+                        if self.unvisited_vertices[neighbour.station_id] > (self.unvisited_vertices[current.station_id] + edge_to_neighbour.time):
+                            self.unvisited_vertices[neighbour.station_id] = self.unvisited_vertices[current.station_id] + edge_to_neighbour.time
 
-        print(end.routes)  # uprav
+                            # zapis tuto cestu do neighbour.routes, pokud tam jeste neni. Pokud tam je, tak nic, pokracuje se dal.
+                            one_route.append(neighbour.station_id)
+                            if one_route not in neighbour.routes:
+                                neighbour.routes.append(one_route)
 
-        return 'from: {} to: {}, duration: {} minutes'.format(start.name, end.name, visited[-1])
+                # make sure visited vertices will not be visited again. Close the loop by changing Current:
+                current.visited = True
+                self.visited_vertices.append(self.unvisited_vertices.pop(current.station_id))
+                for station_id, overall_time in self.unvisited_vertices.items():
+                    if overall_time == min(self.unvisited_vertices.values()):
+                        next_key = station_id
+                latest = current
+                current = self.get_vertex(next_key)
+            return end.routes
+        print('get one route to end: ', get_one_route())
 
 
 # 3. handling the input data'
@@ -213,7 +210,7 @@ lines = pd.DataFrame(dict(l = li_list), index = indices)
 tube = Graph()
 
 # call the find_route function
-print(tube.find_route('start', 'end'))
+print(tube.find_route())
 
 
 
