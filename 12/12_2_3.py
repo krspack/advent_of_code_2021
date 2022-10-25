@@ -3,11 +3,11 @@ import csv
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
+
+
+
 """
-
-
-
-
 
 postup:
 1. upravit routes tak, aby se tam ukladaly vsechny cesty, ne jen ta nejkratsi
@@ -51,6 +51,10 @@ class Vertex:  # tube station
         self.neighbours = []  # station_id
         self.edges = []  # edge_id
         self.routes = []
+        self.new_neighbours = []
+
+    def __repr__(self):
+        return str(self.station_id)
 
 class Graph:    # tube network
   def __init__(self, directed = False):
@@ -91,28 +95,8 @@ class Graph:    # tube network
 
 
   def find_route(self):
-        # Dijkstra algorithm implementation to navigate the London tube
-        # input: names of tube stations in string format, case sensitive
-
-        # 1. travese vertices
-        # =========================
-        # input turned into corresponding vertices:
-        """
-        start_hub_id = int(stations_codelist.loc[start]['hub_id'])
-        for station_id in self.all_vertices:
-            if station_id[0] == start_hub_id:
-                start = self.get_vertex(station_id)
-                break
-        end_hub_id = int(stations_codelist.loc[end]['hub_id'])
-        for station_id in self.all_vertices:
-            if station_id[0] == end_hub_id:
-                end = self.get_vertex(station_id)
-                break
-        """
         start = all_vertices[(1, 10)]
         end = all_vertices[(2, 10)]
-
-        # variables outside the main for-loop
 
         self.unvisited_vertices = dict([(vertex.station_id, 1000) for (id_n, vertex) in self.all_vertices.items()])
         self.unvisited_vertices[start.station_id] = 0
@@ -121,31 +105,43 @@ class Graph:    # tube network
             one_route = [start.station_id]
             current = start
             latest = None
+            current_neighbours_visitable = current.neighbours   # pro prvni kolo
             while end.visited == False:
                 for neighbour_id in current.neighbours:
-                    neighbour = self.get_vertex(neighbour_id)
-                    edge_to_neighbour = self.get_edge_between(current, neighbour)  #[]
+                    if neighbour_id not in current_neighbours_visitable:
+                        print('soused, co uz neni k dispozici: ', neighbour_id)
 
-                    # store the quickest path to each visited vertex in graph.unvisited = [[vertex.name: number], ...]
+                    print('current: ', current, "(its neighbours ", current.neighbours, ')')
+                    neighbour = self.get_vertex(neighbour_id)
+                    print('neighbour ', neighbour)
+                    edge_to_neighbour = self.get_edge_between(current, neighbour)  #[]
+                    print(edge_to_neighbour)
+
+                    # store the quickest path to each vertex in graph.unvisited = [[vertex.name: number], ...]
                     if neighbour.station_id in self.unvisited_vertices:
                         if self.unvisited_vertices[neighbour.station_id] > (self.unvisited_vertices[current.station_id] + edge_to_neighbour.time):
                             self.unvisited_vertices[neighbour.station_id] = self.unvisited_vertices[current.station_id] + edge_to_neighbour.time
 
                             # zapis tuto cestu do neighbour.routes, pokud tam jeste neni. Pokud tam je, tak nic, pokracuje se dal.
                             one_route.append(neighbour.station_id)
+                            print('one route: ', one_route)
                             if one_route not in neighbour.routes:
                                 neighbour.routes.append(one_route)
+                                print('neighbour and its routes: ', neighbour, neighbour.routes)
+                                print('------------')
 
                 # make sure visited vertices will not be visited again. Close the loop by changing Current:
                 current.visited = True
+                print('end visited ', end.visited)
                 self.visited_vertices.append(self.unvisited_vertices.pop(current.station_id))
                 for station_id, overall_time in self.unvisited_vertices.items():
                     if overall_time == min(self.unvisited_vertices.values()):
                         next_key = station_id
                 latest = current
                 current = self.get_vertex(next_key)
-            return end.routes
-        print('get one route to end: ', get_one_route())
+                current_neighbours_visitable = [x for x in current.neighbours if x in self.unvisited_vertices]
+            return [end.routes]
+        return 'get one route to end: ', get_one_route()
 
 
 # 3. handling the input data'
@@ -177,6 +173,15 @@ for i in range(len(bigtab)):
     vertex_to_update2.edges.append(i)
     vertex_to_update.neighbours.append(tuple([row['station2'], row['line']]))
     vertex_to_update2.neighbours.append(tuple([row['station1'], row['line']]))
+
+# vylepseni jen pro ucely caves debugging
+for v in all_vertices.values():
+    v.new_neighbours = []
+    for n in v.neighbours:
+        new_n = all_vertices[n].name
+        v.new_neighbours.append(new_n)
+    # print(v.name, v.new_neighbours)
+
 
 # create edges representing interchanges at hubs(= stations with more than one line):
 keys = range(1, len(stations_codelist)+2)
@@ -211,6 +216,7 @@ tube = Graph()
 
 # call the find_route function
 print(tube.find_route())
+
 
 
 
