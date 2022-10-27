@@ -12,7 +12,7 @@ class Cave:
     def __init__(self, cave_value):
         self.cave_value = cave_value
         self.visited = False
-        self.is_big = None
+        self.is_big = False
         self.adjacent = set()
         self.route = []
         self.follower = None
@@ -22,12 +22,6 @@ class Cave:
         # path_repr = [x.cave_value for x in self.path]
         return self.cave_value
         # return ' with path: '.join((self.cave_value, ', '.join(path_repr)))
-
-    def reset_size(self):
-        if self.cave_value == self.cave_value.upper():
-            self.is_big = True
-        else:
-            self.is_big = False
 
     def get_adjacent_caves_not_in(self, visited_small):
         return [x for x in list(self.adjacent) if x not in visited_small]
@@ -59,12 +53,13 @@ class Queue:   # fifo queue with caves to be explored
         else:
             self.tail.set_follower(cave)
             self.tail = cave
-        cave.in_queue = True
+        cave.in_queue = True    # ko, jak s timto naklada devitka -------------------
         self.size += 1
 
     def dequeue(self):
         self.head.in_queue = False
-        self.head.visited = True
+        if self.head.is_big == False:
+            self.head.visited = True
         second_to_head = self.head.follower
         self.head = second_to_head
         self.size -= 1
@@ -80,31 +75,64 @@ def get_adjacent_caves(edges = all_edges, caves = all_caves):
         caves[edge.beginning].adjacent.add(caves[edge.finish])
         caves[edge.finish].adjacent.add(caves[edge.beginning])
 
+def reset_sizes(caves = all_caves):
+    for cave in caves.values():
+        if cave.cave_value == cave.cave_value.upper():
+            cave.is_big = True
+
 
 def visit(cave, parent_cave, all_routes_list):
     cave.route = copy.copy(parent_cave.route)
     cave.route.append(cave)
     all_routes_list.append(cave.route)
+    # cave.visited = True  # duplicitni
     return
+
+"""
+def browse(caves = all_caves, edges = all_edges):
+    get_adjacent_caves()
+    all_routes = []
+    fifo = Queue()
+    caves['start'].route = ['start']
+    fifo.enqueue(caves['start'])
+    # je potreba menit, co je current, nebo se currentu uplne zbavit
+    while fifo.size > 0:
+        for a in fifo.head.adjacent:
+            print('fifo head ', fifo.head, 'adjacent ', a)
+            if a.visited == False:
+                print('navstivit')
+                visit(a, fifo.head, all_routes)
+                fifo.enqueue(a)
+        fifo.dequeue()
+        print('--')
+    return all_routes
+print(browse())
+"""
 
 def browse(caves = all_caves, edges = all_edges):
     get_adjacent_caves()
-    current = caves['start']
-    current.route = [caves['start']]
+    reset_sizes()
+
     all_routes = []
     fifo = Queue()
-    fifo.enqueue(current)
-    print('fifo head cave value ', fifo.head.cave_value)
-
+    caves['start'].route = ['start']
+    fifo.enqueue(caves['start'])
+    # je potreba menit, co je current, nebo se currentu uplne zbavit
     while fifo.size > 0:
         for a in fifo.head.adjacent:
-            visit(a, current, all_routes)
-            fifo.enqueue(a)
+            print('fifo head ', fifo.head, 'adjacent ', a)
+            if a.visited == False:
+                print('navstivit')
+                visit(a, fifo.head, all_routes)
+                fifo.enqueue(a)
         fifo.dequeue()
-        print(fifo.size)
-
+        print('--')
     return all_routes
 print(browse())
+
+
+
+
 
 # 2. filtruj vysledky:
 # - pokud cesta konci v end, uloz ji do routes_to_end
