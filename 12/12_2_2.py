@@ -126,11 +126,19 @@ def browse(caves = all_caves, edges = all_edges):
                 visit(a, fifo.head, all_routes)
                 fifo.enqueue(a)
         fifo.dequeue()
+        print(fifo.size)
         print('--')
     return all_routes
 print(browse())
 
+"""
+poladit:
+- skoncit prochazeni u endu
+- nedava to ty nejdelsi vysledky - fifo asi neni dost dlouha?
+- dava to vicero sad nekompletnich vysledku - bude nutne je bud shromazdovat (ale jak dlouho?) nebo:
+... vyhodit set a nahradit ho listem
 
+"""
 
 
 
