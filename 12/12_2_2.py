@@ -24,9 +24,6 @@ class Cave:
         return self.cave_value
         # return ' with path: '.join((self.cave_value, ', '.join(path_repr)))
 
-    def get_adjacent_caves_not_in(self, visited_small):
-        return [x for x in list(self.adjacent) if x not in visited_small]
-
     def set_follower(self, other_cave):
         self.follower = other_cave
 
@@ -40,7 +37,7 @@ class Edge:
     def __repr__(self):
         return ' '.join(self.beginning_finish)
 
-
+""" smazat
 class Queue:   # fifo queue with caves to be explored
     def __init__(self):
         self.head = None
@@ -65,6 +62,7 @@ class Queue:   # fifo queue with caves to be explored
         second_to_head = self.head.follower
         self.head = second_to_head
         self.size -= 1
+"""
 
 # instantiation
 all_caves = [[x[0]] for x in edges] + [[x[1]] for x in edges]
@@ -199,31 +197,23 @@ for cave in all_caves.values():
     print(cave, cave.route)
 """
 
+"""
 # pokus 2: DFS, parent vyhozen
 def browse(caves = all_caves, edges = all_edges):
     get_adjacent_caves()
     reset_sizes()
-    for c in caves.values():
-        print(c, c.small)
 
     all_routes = []
 
-    queue = Queue()
-    queue.enqueue(caves['start'])
-
-    def queuing(current):
+    def depth_first(current):
         current.route.append(current.cave_value)
-        # all_routes.append(current.route) az jestli dojde na konec
         if current.small:
             current.visited = True
-        print(0, 'current ', current, current.visited, current.route)
-        # print('all routes ', all_routes)
         for a in current.adjacent:
-            print(1, 'adjacent ', a, a.visited)
             if a.visited == True:
                 continue
             else:
-                print(2, 'adjacent ', a, a.visited)
+                print(1, 'adjacent ', a, a.visited)
                 if a.cave_value == 'end':
                     print('end found')
                     a.route = copy.copy(current.route)
@@ -234,14 +224,85 @@ def browse(caves = all_caves, edges = all_edges):
                     else:
                         continue
                 else:
-                    print(3, 'adjacent ', a, a.visited)
+                    print(2, 'adjacent ', a, a.visited)
                     a.route = copy.copy(current.route)
-                    print(queuing(a))
-    queuing(caves['start'])
+                    print(depth_first(a))
+    depth_first(caves['start'])
 
 print(browse())
+"""
+
+# pokus n: depth_first a v nem stack namisto queue
+
+class Stack:
+  def __init__(self, top_cave = None):
+    self.top_cave = top_cave
+
+  def is_empty(self):
+    if self.top_cave == None:
+        return True
+    else:
+        return False
+
+  def push(self, cave):
+    if self.top_cave == None:
+        self.top_cave = cave
+    else:
+        cave.set_follower(self.top_cave)
+        self.top_cave = cave
+
+  def pop(self):
+    cave_to_remove = self.top_cave
+    self.top_cave = cave_to_remove.follower
+
+  def snapshot(self):  # a potomn all routes append snapshot
+    if self.top_cave == None:
+        return []
+    else:
+        current_cave = self.top_cave
+        route = [current_cave]
+        print(66, route)
+        while current_cave.follower != None:
+            route.append(current_cave.follower)
+            print(666, route)
+            current_cave = current_cave.follower
+    return route
+
+"""
+browse:
+pridavat items do stacku
+jakmile se najde end (current je end), pak udelat snapshot stacku, a jestlize tam jeste neni, ulozit ho do all_routes
+potom: odebirat ze stacku. Odebrat end = vratit se k posledni krizovatce a jit po ni jinou cestou a hledat end tamtudy. Jeslti to nevyjde,
+vratit se zase o krizovatku dal atd.
+"""
 
 
+def browse(caves = all_caves, edges = all_edges):
+    get_adjacent_caves()
+    reset_sizes()
+    s = Stack()
+    all_routes = []
+
+    def depth_first(current):
+        s.push(current)
+        if current.small == True:
+            current.visited = True
+        print('current ', current, current.visited)
+        if current == caves['end']:
+            return 1, s.snapshot()
+        else:
+            for a in current.adjacent:
+                print('a ', a)
+                if a.visited == False:
+                    depth_first(current = a)
+        return 2, s.snapshot()
+
+    route = depth_first(caves['start'])
+    print('one route ', route)
+    all_routes.append(route)
+    return all_routes
+
+print(browse())
 
 
 
