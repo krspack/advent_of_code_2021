@@ -1,4 +1,11 @@
 
+"""
+snapshot neni route stejne jako queue neni route - ne vsechno, co je projito, se promitne do vysledne cesty, viz d.
+projit prochazeni s pampirem a udelat stejnou zmenu jako u prochazeni do sirky
+"""
+
+
+
 import copy
 
 with open('12_1test_input.txt', encoding = 'utf-8-sig') as txt:
@@ -288,14 +295,16 @@ def browse(caves = all_caves, edges = all_edges):
         if current.small == True:
             current.visited = True
         print('current ', current, current.visited)
-        if current == caves['end']:
-            return 1, s.snapshot()
+        if current == caves['end']:  # alternativa
+            return s.snapshot()
+            # s.pop()  # tj se stacku se vyhodi end = udela se krok zpatky, current je predchozi uzel (proto se musi zmenit na unvisited), prochazi se sourozenci endu
+            # s.top_cave.visited = False
         else:
             for a in current.adjacent:
-                print('a ', a)
+                print('adjacent ', a)
                 if a.visited == False:
                     depth_first(current = a)
-        return 2, s.snapshot()
+        return s.snapshot()
 
     route = depth_first(caves['start'])
     print('one route ', route)
@@ -303,7 +312,6 @@ def browse(caves = all_caves, edges = all_edges):
     return all_routes
 
 print(browse())
-
 
 
 
