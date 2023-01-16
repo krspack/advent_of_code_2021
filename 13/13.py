@@ -3,7 +3,7 @@ from collections import defaultdict
 import numpy as np
 
 # parse input
-with open('13_input.txt', encoding = 'utf-8-sig') as txt:
+with open('13_test_input.txt', encoding = 'utf-8-sig') as txt:
     lines = txt.readlines()
     lines = [x.strip() for x in lines]
     empty_line_index = lines.index('')
@@ -13,21 +13,20 @@ with open('13_input.txt', encoding = 'utf-8-sig') as txt:
     fold_along = lines[-(len(lines)-empty_line_index-1):]
     fold_along = [x.replace('fold along ', '') for x in fold_along]
     fold_along = [x.split('=') for x in fold_along]
-    print(coordinates)
 
 def get_empty_matrix(coordinates_list):
-    ys = [item[0] for item in coordinates_list]
-    xs = [item[1] for item in coordinates_list]
+    ys = [item[0] for item in coordinates_list]  # y = rows, viz zadani
+    xs = [item[1] for item in coordinates_list]  # x = columns, viz zadani
     max_y = max(ys)
     max_x = max(xs)
     return np.zeros((max_x + 1, max_y + 1))
+print(get_empty_matrix(coordinates))
 
 def fill_matrix_with_dots(matrix = get_empty_matrix(coordinates), coordinates_list = coordinates):
     for pair_of_coordinates in coordinates:
         matrix[pair_of_coordinates[1], pair_of_coordinates[0]] += 1
     return matrix
 updated_matrix = fill_matrix_with_dots()
-print(updated_matrix)
 
 """
 # a
@@ -70,44 +69,36 @@ print(first_fold())
 # b
 def all_folds(matrix = updated_matrix, coordinates_list = coordinates, instructions = fold_along):
     for fold_instruction in instructions:
+        print(matrix.shape)
         print(fold_instruction)
         where_to_fold = int(fold_instruction[1])
         axis = fold_instruction[0]
         if axis == 'y':
-            print('y')
             for pair_of_coordinates in coordinates:
                 line = pair_of_coordinates[1]
                 if line > where_to_fold:
-                    # print(pair_of_coordinates[1])
-                    # print(only_fold)
+                    complementary_line = where_to_fold*2 - line
                     complementary_line = matrix[(where_to_fold*2 - line)]
-                    # print(line)
-                    # print(matrix[line])  # tu
-                    # print(complementary_line)
-                    complementary_line += matrix[line]
-                    # print(complementary_line)
-                    # print('--')
+                    line = matrix[line]
+                    complementary_line += line
             matrix = matrix[:where_to_fold, :]
-            print(matrix)
+            print(matrix.shape)
+            print('---')
         else:
-            print('x')
             for pair_of_coordinates in coordinates:
-                column = pair_of_coordinates[1]
+                column = pair_of_coordinates[0]
                 if column > where_to_fold:
-                    # print(pair_of_coordinates[1])
-                    # print(only_fold)
-                    complementary_column = matrix[:, (where_to_fold*2 - column)]
-                    # print(column)
-                    # print(matrix[:, column])
-                    # print(complementary_column)
-                    complementary_column += matrix[:, column]
-                    # print(complementary_column)
-                    # print('--')
+                    complementary_column = where_to_fold*2 - column
+                    complementary_column = matrix[:, complementary_column]
+                    column = matrix[:, column]
+                    complementary_column += column
             matrix = matrix[:, :where_to_fold]
+            print(matrix.shape)
+            print('---')
     not_zero = np.count_nonzero(matrix > 0)
     return not_zero
 print(all_folds())
-"""
+
 
 
 
