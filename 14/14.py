@@ -1,6 +1,6 @@
 
 # parse input
-with open('14_test_input.txt', encoding = 'utf-8-sig') as txt:
+with open('14_input.txt', encoding = 'utf-8-sig') as txt:
     lines = txt.readlines()
     lines = [x.strip() for x in lines]
     empty_line_index = lines.index('')
@@ -8,8 +8,6 @@ with open('14_test_input.txt', encoding = 'utf-8-sig') as txt:
     insertions = lines[-(len(lines)-empty_line_index-1):]
     insertions = [x.split(' -> ') for x in insertions]
     insertions = {x[0]: x[1] for x in insertions}
-    print(insertions)
-    print(initial_substance)
 
 def get_couples(formula = initial_substance, insertions = insertions):
     couples = []
@@ -20,18 +18,33 @@ def get_couples(formula = initial_substance, insertions = insertions):
             continue
     couples = [''.join(x[:]) for x in couples]
     return couples
-print(get_couples())
+first_couples = get_couples()
 
-def insert(insertions = insertions, couples = get_couples()):
+def insert(couples, n, insertions = insertions):
     new_couples = []
-    for couple in couples:
-        new_couples.append([couple[0], insertions.get(couple)])
-        new_couples.append([insertions.get(couple), couple[1]])
-    new_couples = [''.join(x[:]) for x in new_couples]
-    return new_couples
-print(insert())
+    # print('x', n, couples, new_couples)
+    if n == 0:
+        couples = [couples[0][0]]+[x[1] for x in couples]
+        return ''.join(couples[:])
+    else:
+        for couple in couples:
+            new_couples.append([couple[0], insertions.get(couple)])
+            new_couples.append([insertions.get(couple), couple[1]])
+        new_couples = [''.join(x[:]) for x in new_couples]
+        # print('y', n, couples, new_couples)
+        return insert(new_couples, n-1)
+new_formula = insert(first_couples, 10)
 
-def repeat(times):
-    pass
+def count_result(formula = new_formula):
+    frequencies = {x: new_formula.count(x) for x in new_formula}
+    most_frequent = max(frequencies.values())
+    least_frequent = min(frequencies.values())
+    return most_frequent - least_frequent
+print(count_result())
+
+
+
+
+
 
 
