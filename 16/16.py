@@ -1,98 +1,118 @@
-"""
-prepsat tak, aby to nebyla funkce ve funkci, ale sada co nejmensich funkci
-ty se pak volaji po sobe, jsou dobre pojmenovane a neni v tom bordel v podavani argumentu
-"""
-
-
 
 
 hex1 = 'D2FE28'
-hex2 = '38006F45291200'  # z nejakeho duvodu nefunguje
+hex2 = '38006F45291200'
 hex3 = 'EE00D40C823060'
 hex4 = '8A004A801A8002F478'
+hex5 = '620080001611562C8802118E34'  # nefunguje
+hex6 = 'C0015000016115A2E0802F182340'  # nefunguje
+hex7 = 'A0016C880162017C3686B18A3D4780'
 
-def f(input_txt):
+input_txt = hex2
 
-    def get_binary_txt(hex_txt = input_txt):
-        bin_txt = bin(int(hex_txt, 16))
-        return bin_txt
-    binary_txt = get_binary_txt()
-    print(binary_txt)
+def get_binary_txt(hex_txt = input_txt):
+    bin_txt = bin(int(hex_txt, 16))
+    return bin_txt
+input_binary = get_binary_txt()
 
-    payload_storage = []
+def is_zeros(chunks_of_binary_txt):
+    print(chunks_of_binary_txt)
+    if chunks_of_binary_txt == None:
+        return True
+    elif len(chunks_of_binary_txt) == 0:
+        return True
+    elif int(chunks_of_binary_txt, 2) == 0:
+        return True
+    elif (type(chunks_of_binary_txt) == list) and (int(chunks_of_binary_txt[0], 2) == 0):
+        return True
+    elif (type(chunks_of_binary_txt) == list) and (chunks_of_binary_txt[0] in [i*'0' for i in range(10)]):
+        return True
+    return False
 
-    def get_version_id_rest(payload = payload_storage, bin_txt = binary_txt):
-        bin_txt = bin_txt.replace('0b', '')  # minus '0b'
-        version = bin_txt[:3]
-        version = int(version, 2)
-        print('version ', version)
-        id_number = bin_txt[3:6]
-        id_number = int(id_number, 2)
-        id_index_end = 5
-        rest_of_packet = bin_txt[(id_index_end + 1):]
-        print('get_version_id_rest: ', version, id_number, rest_of_packet)
+def get_version_id_rest(bin_txt):
+    print(bin_txt), '-----------'
+    if input_txt == hex2:   # fixes a mistake in test input
+        bin_txt = bin_txt.replace('0b', '00')
+    else:
+        bin_txt = bin_txt.replace('0b', '')
+    version = bin_txt[:3]
+    version = int(version, 2)
+    print('VERSION ', version)
+    id_number = bin_txt[3:6]
+    id_number = int(id_number, 2)
+    print('id ', id_number)
+    id_index_end = 5
+    rest_of_packet = bin_txt[(id_index_end + 1):]
+    print(version, id_number, rest_of_packet)
+    return version, id_number, rest_of_packet
 
-        if id_number == 4:
-            print('id_number: 4')
-            def parse_literal_value(literal_bits, payload):
-                chunks = [literal_bits[x * 5:(x + 1) * 5] for x in range((len(literal_bits) + 5 - 1) // 5 )]
-                print(chunks)
-                for ind, chunk in enumerate(chunks):    # tady je potreba uchovat zbytek chunku - muze v nich byt dalsi operacni subpaket
-                    print(ind, chunk)
-                    if chunk[0] != '0':
-                        payload.append(chunk[1:])
-                    else:
-                        payload.append(chunk[1:])
-                        payload = ''.join(payload)
-                        payload = int(payload, 2)
-                        try:
-                            unused_chunks = chunks[ind+1:]
-                            unused_chunks = ''.join(unused_chunks)
-                            print('unused_chunks ', unused_chunks)
-                            if int(unused_chunks, 2) == 0:     # meaningless zeros at the end >>> tento chunk byl posledni, lze return
-                                return payload
-                            else:
-                                print('payload ', payload, id(payload))
-                                print('payload storage ', payload_storage, id(payload_storage))
-                                get_version_id_rest(payload, unused_chunks)
-                        except IndexError:
-                            return payload
-                        return payload
-            package_payload = parse_literal_value(rest_of_packet, payload_storage)
-            print(package_payload)
 
+def get_payload(rest):
+    payload = []
+    chunks = [rest[x * 5:(x + 1) * 5] for x in range((len(rest) + 5 - 1) // 5 )]
+    print(chunks)
+    for ind, chunk in enumerate(chunks):    # tady je potreba uchovat zbytek chunku - muze v nich byt dalsi operacni subpaket
+        if chunk[0] == '1':   # tady neni return, protoze dokud neni prvni nula, neni to posledni paket
+            payload.append(chunk[1:])
         else:
-            print('id_number: else')
-            def parse_operators(rest = rest_of_packet):
-                if rest[0] == '1':
-                    print('If the length type ID is 1, then the next 11 bits are a number that represents the number of sub-packets immediately contained by this packet.')
-                    subpackets = rest[1:12]
-                    subpackets = int(subpackets, 2)
-                    print(subpackets)
-                    literal_packets = rest[12:]  # a v tom dany pocet paketu
-                    print(literal_packets)
-                    literal_packets = [literal_packets[x * 11:(x + 1) * 11] for x in range((len(literal_packets) + 1 - 1) // 11 )]
-                    print(literal_packets)
-                    for packet in literal_packets:
-                        print('len packet', len(packet))
-                        get_version_id_rest(payload_storage, packet)
+            payload.append(chunk[1:])
+            if ind == len(chunks)-1:
+                unused_chunks = None
+            else:
+                unused_chunks = ''.join(chunks[(ind+1):])
+            return payload, unused_chunks
 
-                else:
-                    print('If the length type ID is 0... ')
-                    subpackets_length = rest[1:16]
-                    subpackets_length = int(subpackets_length, 2)
-                    print(subpackets_length)
-                    literal_packets = rest[(16+subpackets_length+1):]
-                    print('rest ', rest)
-                    print('literal packets ', literal_packets)
-                    if literal_packets != '':
-                        'jsou tu subpakety'
-                        get_version_id_rest(payload_storage, literal_packets)
-                    else:
-                        'zadne subpakety'
-            print(parse_operators())
-    print(get_version_id_rest())
 
-print(f(hex3))
+def parse_operators(rest):
+    zero_one, rest = int(rest[0]), rest[1:]
+    return zero_one, rest
+
+def get_number_of_subpackets(rest_1):
+    print('If the length type ID is 1, then the next 11 bits are a number that represents the number of sub-packets immediately contained by this packet.')
+    subpackets_count = rest_1[:11]
+    subpacket_count = int(subpackets_count, 2)
+    subpackets = rest_1[11:]
+    return subpackets, subpackets_count
+
+def get_lenght_of_subpackets(rest_0):
+    print('If the length type ID is 0, then the next 15 bits are a number that represents the total length in bits of the sub-packets contained by this packet.')
+    subpackets_length = rest_0[:15]
+    print(subpackets_length)
+    subpackets_length = int(subpackets_length, 2)
+    print(subpackets_length)
+    subpackets = rest_0[15: (15 + subpackets_length)]
+    print(subpackets)   # ko: dava to smysl?
+    return subpackets, subpackets_length  # ne - return jenom subpokety, ne delku ==========================================================
+
+
+def f(binary_txt):
+    versions = []
+    payloads = []
+    while is_zeros(binary_txt) == False:
+        version, id_number, rest_of_packet = get_version_id_rest(binary_txt)
+        versions.append(version)
+        if id_number == 4:
+            a, unused_chunks = get_payload(rest_of_packet)
+            print(a, len(a), unused_chunks)
+            payloads.append(a)
+            # print(a)
+            if is_zeros(unused_chunks) == False:
+                binary_txt = unused_chunks
+            else:
+                payloads = [''.join(x) for x in payloads]
+                payloads = [int(x, 2) for x in payloads]
+                return payloads, sum(versions)
+        else:
+            zero_or_one, others = parse_operators(rest_of_packet)
+            if zero_or_one == 1:
+                subpackets_1, subpackets_count = get_number_of_subpackets(others)
+                binary_txt = subpackets_1
+            else:
+                subpackets_0, subpackets_lenght = get_lenght_of_subpackets(others)
+                binary_txt = subpackets_0
+    return
+
+
+print(f(input_binary))
 
 
