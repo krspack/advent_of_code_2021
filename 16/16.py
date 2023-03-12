@@ -1,5 +1,14 @@
 import random
 
+"""
+prekopat:
+dostat se k payloadum, jako vedlejsi produkt funkce dat pocet vyuzitych bitu
+pak diky tomu budu umet vyhodnotit, jestli parent node ma prostor pro dany paket
+postupovta krok po kroku
+
+"""
+
+
 # test inputs
 hex1 = 'D2FE28'
 hex2 = '38006F45291200'
@@ -23,7 +32,7 @@ with open('16_input.txt', encoding = 'utf-8-sig') as txt:
     txt = txt.readlines()
     txt = txt[0][:-1]
 
-input_txt = b7
+input_txt = hex2
 
 def get_binary_txt(hex_txt = input_txt):
     bin_txt = bin(int(hex_txt, 16))
@@ -59,93 +68,40 @@ def get_version_id_rest(bin_txt):
     id_number = int(id_number, 2)
     id_index_end = 5
     rest_of_packet = bin_txt[(id_index_end + 1):]
+    print(version, id_number, rest_of_packet)
     return version, id_number, rest_of_packet
 
-def get_payload(rest, lenght, no_packets):
+def get_payload(rest):
     print('rest 1', rest)
     payload = []
     chunks = [rest[x * 5:(x + 1) * 5] for x in range((len(rest) + 5 - 1) // 5 )]
-
-    if lenght != None:
-        print('lenght')
-        rest = rest[:lenght]   # omezeni je v delce - zbytek jsou rovnou unused chunks = nejsou soucasti tohoto paketu. ? Pokud jsou taky id4, patri nadrazenemu paketu?
-        unused_chunks = rest[lenght:]
-        chunks = [rest[x * 5:(x + 1) * 5] for x in range((len(rest) + 5 - 1) // 5 )]
-        print('chunks ', chunks)
-        for chunk in chunks:
+    for ind, chunk in enumerate(chunks):   # bez omezeni delky a poctu paketu
+        if chunk[0] == '1':
             payload.append(chunk[1:])
+        else:
+            payload.append(chunk[1:])
+            if ind == len(chunks)-1:
+                unused_chunks = None
+            else:
+                unused_chunks = ''.join(chunks[(ind+1):])
             print(payload, unused_chunks)
-            return payload, unused_chunks
-    if no_packets != None:
-        print('no packets')
-        chunks = [rest[x * 5:(x + 1) * 5] for x in range((len(rest) + 5 - 1) // 5 )]
-        print('chunks ', chunks)
-        for ind, chunk in enumerate(chunks[:no_packets]):  # omezeni je v poctu paketu
-            if chunk[0] == '1':
-                payload.append(chunk[1:])
-            else:
-                payload.append(chunk[1:])
-                if ind == len(chunks)-1:
-                    unused_chunks = None
-                else:
-                    unused_chunks = ''.join(chunks[(ind+1):])
-                print(payload, unused_chunks)
-                return payload, unused_chunks
-    else:
-        print('literal value ', chunks)
-        print('chunks ', chunks)
-        for ind, chunk in enumerate(chunks):   # bez omezeni delky a poctu paketu
-            if chunk[0] == '1':
-                payload.append(chunk[1:])
-            else:
-                payload.append(chunk[1:])
-                if ind == len(chunks)-1:
-                    unused_chunks = None
-                else:
-                    unused_chunks = ''.join(chunks[(ind+1):])
-                print(payload, unused_chunks)
-                return payload, unused_chunks
+            len_used_chunks = len(''.join(payload)) + 6
+            return payload, unused_chunks, len_used_chunks
 
 
 def parse_operators(rest):
     zero_one = rest[0]
     if zero_one == '0':
         lenght = int(rest[1:16], 2)
-        no_packets = None
+        no_packets = 1000
         rest = rest[16:]
     else:
         no_packets = int(rest[1:12], 2)
         rest = rest[12:]
-        lenght = None
+        lenght = 1000
     print('rest - lenght - no packets ', rest, lenght, no_packets)
     return rest, lenght, no_packets
 
-"""
-# a  # lze prepsat na get version a nezalamovat se s payloady
-def (binary_txt):
-    versions = []
-    payloads = []
-    while is_zeros(binary_txt) == False:
-        version, id_number, rest_of_packet = get_version_id_rest(binary_txt)
-        print(id_number)
-        versions.append(version)
-        if id_number == 4:
-            a, unused_chunks = get_payload(rest_of_packet)
-            payloads.append(a)
-            print(a)
-            if is_zeros(unused_chunks) == False:
-                binary_txt = unused_chunks
-            else:
-                payloads = [''.join(x) for x in payloads]
-                payloads = [int(x, 2) for x in payloads]
-                return payloads, sum(versions)
-        else:
-            rest = parse_operators(rest_of_packet)
-            binary_txt = rest
-
-    return payloads, sum(versions)
-print(f(input_binary))
-"""
 
 def do_id_maths(literal_payload, id_n):
     assert id_n < 8
@@ -184,67 +140,84 @@ def do_id_maths(literal_payload, id_n):
 tree = []
 
 class Tree_node:
-    def __init__(self, id_number, children, payload):
+    def __init__(self, id_number, children, payload, rest, len_used_chunks):
         self.id_number = id_number
         self.parent = None
         self.children = []
         self.payload = payload
         self.children_payloads = []
+        self.rest = rest
+        self.len_used_chunks = len_used_chunks
+        self.limit_lenght = 1000
+        self.limit_no_packets = 1000
+        self.has_space = True
         print("initializing node...", id_number)
 
     def add_child(self, child_node):
+        assert self.has_space == True
         print("Adding ", child_node.id_number, 'to', self.id_number)
         self.children.append(child_node)
-        # self.children_payloads.append(child_node.payload)
+        self.limit_lenght -= child_node.len_used_chunks
         child_node.parent = self
 
-    def traverse(self):
-        print("Traversing...")
-        nodes_to_visit = [self]
-        while len(nodes_to_visit) > 0:
-          current_node = nodes_to_visit.pop()
-          print(current_node.value)
-          nodes_to_visit += current_node.children
+    def apply_limit(self, child):
+        print('self.id_number ', self.id_number)
+        print('self.limit_lenght', self.limit_lenght)
+        print('self.children', self.children)
+        print('child rest' , child.rest)
+        print('self rest', self.rest)
+        print(self.limit_lenght, child.len_used_chunks)
+        if self.limit_no_packets <= len(self.children):
+            self.has_space = False
+        if self.limit_lenght < child.len_used_chunks:
+            self.has_space = False
+        print(self.id_number, 'has space? ', self.has_space)
 
+root = Tree_node('root', [], None, input_binary, 0)
 
-root = Tree_node('root', [], None)
 
 
 # b
 def f(binary_txt):
     current_parent = root
-    payloads = []
     while is_zeros(binary_txt) == False:
+        current_parent.apply_limit(current_tree_node)
         version, id_number, rest_of_packet = get_version_id_rest(binary_txt)
-        print(version, id_number, rest_of_packet)
         if id_number == 4:
-            a, unused_chunks = get_payload(rest_of_packet, lenght = None, no_packets = None)
+            a, unused_chunks, len_used_chunks = get_payload(rest_of_packet)
             a = ''.join(a)
             a = int(a, 2)
-            payloads.append(a)
-            current_tree_node = Tree_node(id_number, None, a)
-            current_parent.add_child(current_tree_node)
             print('a', a)
+            current_tree_node = Tree_node(id_number, None, a, rest_of_packet, len_used_chunks)
             if is_zeros(unused_chunks) == False:
                 binary_txt = unused_chunks
             else:
-                # payloads = [''.join(x) for x in payloads]
-                # payloads = [int(x, 2) for x in payloads]
-                return payloads, current_tree_node
-            print('---')
+                for ch in root.children:
+                    return ch.payload
         else:
-            current_tree_node = Tree_node(id_number, None, None)
-            current_parent.add_child(current_tree_node)
-            current_parent = current_tree_node
             rest, lenght, no_packets = parse_operators(rest_of_packet)
+            current_tree_node = Tree_node(id_number, None, None, rest, rest_of_packet)
+            current_tree_node.limit_lenght = lenght
+            current_tree_node.limit_no_packets = no_packets
+            print('--')
+            print(current_tree_node.rest)
+            current_parent.apply_limit(current_tree_node)
+            if current_parent.has_space != True:
+                grandparent = current_parent.parent
+                current_parent = grandparent
+            else:
+                current_parent.add_child(current_tree_node)
+            current_parent = current_tree_node
             binary_txt = rest
             print('-------------')
 
-    return payloads, current_tree_node
+    for ch in root.children:
+        return ch.payload
 
-f(input_binary)    # dodat print
+print(f(input_binary))
 
 
+"""
 def traverse(node):
     current_node = node
     print('node ', id(node), node.payload)
@@ -253,7 +226,7 @@ def traverse(node):
         if current_node.children_payloads != []:
             current_node.payload = do_id_maths(current_node.children_payloads, current_node.id_number)
             current_node = current_node.parent
-        else:    # zkusit sem poslat Pracovni?
+        else:
             for child in current_node.children:
                 print('id current node: ', id(current_node), 'a id child: ', id(child), child.id_number)
                 if child.payload != None:
@@ -264,27 +237,7 @@ def traverse(node):
 
     return node.payload
 
-def traverse1(node):
-    current_node = node
-    while True:
-        if current_node.payload != []:
-            return current_node.payload
-        else:
-            print('current_node id, payload, childrens payload', id(current_node), current_node.id_number, current_node.payload, current_node.children_payloads)
-            if current_node.children_payloads != []:
-                current_node.paylad = do_id_maths(current_node.children_payloads, current_node.id_number)
-            else:
-                for child in current_node.children:
-                    print('ch ', child.id_number)
-                    if child.payload != []:
-                        current_node.children_payloads.append(child.payload)
-                    else:
-                        current_node = child
-    return node.payload
-
-
-for ch in root.children:
-    print('traverse... ', traverse(ch))
+"""
 
 
 
