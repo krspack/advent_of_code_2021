@@ -32,12 +32,17 @@ with open('16_input.txt', encoding = 'utf-8-sig') as txt:
     txt = txt.readlines()
     txt = txt[0][:-1]
 
-input_txt = hex2
+input_txt = b7
 
 def get_binary_txt(hex_txt = input_txt):
     bin_txt = bin(int(hex_txt, 16))
+    # print(bin_txt)
     bin_txt = bin_txt[2:]
+    # print(bin_txt)
     first_bit = bin(int(hex_txt[0], 16))[2:]
+    # print(int(hex_txt[0], 16))
+    # print(bin(int(hex_txt[0], 16)))
+    # print(first_bit)
     if len(first_bit) == 3:
         bin_txt = '0'+bin_txt
     elif len(first_bit) == 2:
@@ -61,21 +66,21 @@ def is_zeros(chunks_of_binary_txt):  # a few lines are likely redundant
         return True
     return False
 
-def get_version_id_rest(bin_txt):
+def parse_head(bin_txt):
     version = bin_txt[:3]
     version = int(version, 2)
     id_number = bin_txt[3:6]
     id_number = int(id_number, 2)
     id_index_end = 5
-    rest_of_packet = bin_txt[(id_index_end + 1):]
-    print(version, id_number, rest_of_packet)
-    return version, id_number, rest_of_packet
+    after_head = bin_txt[(id_index_end + 1):]
+    print(id_number, after_head)
+    return version, id_number, after_head
 
 def get_payload(rest):
-    print('rest 1', rest)
+    # print('rest 1', rest)
     payload = []
     chunks = [rest[x * 5:(x + 1) * 5] for x in range((len(rest) + 5 - 1) // 5 )]
-    for ind, chunk in enumerate(chunks):   # bez omezeni delky a poctu paketu
+    for ind, chunk in enumerate(chunks):
         if chunk[0] == '1':
             payload.append(chunk[1:])
         else:
@@ -84,28 +89,27 @@ def get_payload(rest):
                 unused_chunks = None
             else:
                 unused_chunks = ''.join(chunks[(ind+1):])
-            print(payload, unused_chunks)
-            len_used_chunks = len(''.join(payload)) + 6
-            return payload, unused_chunks, len_used_chunks
+            # print(payload, unused_chunks)
+            payload = ''.join(payload)
+            payload_lenght = len(payload) + 6  # head lenght
+            payload = int(payload, 2)
+            return payload, unused_chunks, payload_lenght
 
 
-def parse_operators(rest):
+
+
+def skip_operators(rest):
     zero_one = rest[0]
     if zero_one == '0':
-        lenght = int(rest[1:16], 2)
-        no_packets = 1000
         rest = rest[16:]
     else:
-        no_packets = int(rest[1:12], 2)
         rest = rest[12:]
-        lenght = 1000
-    print('rest - lenght - no packets ', rest, lenght, no_packets)
-    return rest, lenght, no_packets
+    return rest
 
 
 def do_id_maths(literal_payload, id_n):
     assert id_n < 8
-    print('literal payload a idn ', literal_payload, id_n)
+    # print('literal payload a idn ', literal_payload, id_n)
     if id_n == 0:
         return sum(literal_payload)
     if id_n == 1:
@@ -140,18 +144,11 @@ def do_id_maths(literal_payload, id_n):
 tree = []
 
 class Tree_node:
-    def __init__(self, id_number, children, payload, rest, len_used_chunks):
+    def __init__(self, version, id_number, after_head):
+        self.version = version
         self.id_number = id_number
-        self.parent = None
-        self.children = []
-        self.payload = payload
-        self.children_payloads = []
-        self.rest = rest
-        self.len_used_chunks = len_used_chunks
-        self.limit_lenght = 1000
-        self.limit_no_packets = 1000
-        self.has_space = True
-        print("initializing node...", id_number)
+        self.after_head = after_head
+
 
     def add_child(self, child_node):
         assert self.has_space == True
@@ -173,11 +170,44 @@ class Tree_node:
             self.has_space = False
         print(self.id_number, 'has space? ', self.has_space)
 
-root = Tree_node('root', [], None, input_binary, 0)
+    def parse_operators(node):
+        assert node.id_number != 4
+        if node.after_head[0] == '0':
+            node.limit_lenght = int(node.after_head[1:16], 2)
+            node.limit_no_packets = 1000
+            rest = node.after_head[16:]
+        else:
+            node.limit_no_packets = int(node.after_head[1:12], 2)
+            node.limit_lenght = 1000
+            rest = node.after_head[12:]
+        return rest
+
+# root = Tree_node('root', [], None, input_binary, 0)
 
 
 
 # b
+
+def f(binary_txt):
+    while is_zeros(binary_txt) == False:
+        version, id_number, after_head = parse_head(binary_txt)   # after_head = payload_lenght + rest
+        tree.append(Tree_node(version, id_number, after_head))
+        current_node = tree[-1]
+        if current_node.id_number == 4:
+            current_node.payload, current_node.rest, current_node.payload_lenght = get_payload(after_head)
+            print('payload ', current_node.payload)  # rovnou ve funkci to prekodovat
+            if is_zeros(current_node.rest) == False:
+                binary_txt = current_node.rest
+            else:
+                return # tady bude return payload vrchniho uzlu ( a pro acko i return soucet vsech verzi)
+        else:
+            rest = current_node.parse_operators()    # ZA TENTO RADEK DAT FUNKCI HAS SPACE - TA JE ZAKLAD PRO STAVENI STRUKTURY STROMU
+            binary_txt = rest
+    return
+print(f(input_binary))
+
+
+"""
 def f(binary_txt):
     current_parent = root
     while is_zeros(binary_txt) == False:
@@ -217,6 +247,7 @@ def f(binary_txt):
 print(f(input_binary))
 
 
+
 """
 def traverse(node):
     current_node = node
@@ -237,7 +268,7 @@ def traverse(node):
 
     return node.payload
 
-"""
+
 
 
 
