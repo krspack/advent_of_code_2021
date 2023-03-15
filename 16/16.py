@@ -73,7 +73,7 @@ def parse_head(bin_txt):
     id_number = int(id_number, 2)
     id_index_end = 5
     after_head = bin_txt[(id_index_end + 1):]
-    print(id_number, after_head)
+    # print(id_number, after_head)
     return version, id_number, after_head
 
 def get_payload(rest):
@@ -89,11 +89,10 @@ def get_payload(rest):
                 unused_chunks = None
             else:
                 unused_chunks = ''.join(chunks[(ind+1):])
-            # print(payload, unused_chunks)
             payload = ''.join(payload)
-            payload_lenght = len(payload) + 6  # head lenght
+            packet_lenght = len(payload) + 1 + 6 # head lenght
             payload = int(payload, 2)
-            return payload, unused_chunks, payload_lenght
+            return payload, unused_chunks, packet_lenght
 
 
 
@@ -148,27 +147,46 @@ class Tree_node:
         self.version = version
         self.id_number = id_number
         self.after_head = after_head
+        self.children = []
+        self.parent = None
+        if self.id_number == 4:
+            self.has_space = False
+        else:
+            self.has_space = True
+        self.limit_lenght = lambda id_number: 0 if id_number == 4 else 1000
+        self.limit_no_packets = lambda id_number: 0 if id_number == 4 else 1000
 
 
     def add_child(self, child_node):
         assert self.has_space == True
         print("Adding ", child_node.id_number, 'to', self.id_number)
         self.children.append(child_node)
-        self.limit_lenght -= child_node.len_used_chunks
+        self.limit_lenght -= child_node.packet_lenght
+        self.limit_no_packets -= 1
         child_node.parent = self
 
     def apply_limit(self, child):
-        print('self.id_number ', self.id_number)
-        print('self.limit_lenght', self.limit_lenght)
-        print('self.children', self.children)
-        print('child rest' , child.rest)
-        print('self rest', self.rest)
-        print(self.limit_lenght, child.len_used_chunks)
-        if self.limit_no_packets <= len(self.children):
+        if self.limit_no_packets <= 0:
             self.has_space = False
-        if self.limit_lenght < child.len_used_chunks:
+        if self.limit_lenght < child.packet_lenght:
             self.has_space = False
-        print(self.id_number, 'has space? ', self.has_space)
+        print(self.id_number, 'has space? ', self.has_space, self.limit_lenght, self.limit_no_packets)
+
+    def add_to_newly_found_parent(self, current_parent):
+        assert (current_parent.id_number != 4 and current_parent.has_space == False)
+        while current_parent.parent != None:
+            current_parent.parent.apply_limit(self)
+            if current_parent.parent.has_space == True:
+                current_parent = current_parent.parent
+                current_parent.add_child(self)
+        print("Adding ", self.id_number, 'to', current_parent.id_number)
+
+    def add_to_tree(self, current_parent):
+        current_parent.apply_limit(self)
+        if current_parent.has_space == True:
+            current_parent.add_child(self)
+        else:
+            self.add_to_newly_found_parent(current_parent)
 
     def parse_operators(node):
         assert node.id_number != 4
@@ -189,20 +207,31 @@ class Tree_node:
 # b
 
 def f(binary_txt):
+    current_parent = None
     while is_zeros(binary_txt) == False:
+        if current_parent != None:
+            print('current parent ', current_parent.id_number)
         version, id_number, after_head = parse_head(binary_txt)   # after_head = payload_lenght + rest
         tree.append(Tree_node(version, id_number, after_head))
         current_node = tree[-1]
         if current_node.id_number == 4:
-            current_node.payload, current_node.rest, current_node.payload_lenght = get_payload(after_head)
-            print('payload ', current_node.payload)  # rovnou ve funkci to prekodovat
+            current_node.payload, current_node.rest, current_node.packet_lenght = get_payload(after_head)
+            print('payload ', current_node.payload, 'lenght of packet: ', current_node.packet_lenght, 'zbyva bitu: ', len(current_node.rest))  # rovnou ve funkci to prekodovat
+            # print('current node rest ', current_node.rest)
+            current_node.add_to_tree(current_parent)
+
             if is_zeros(current_node.rest) == False:
                 binary_txt = current_node.rest
             else:
+                binary_txt = current_node.rest
+                print('zerossssssssss: ', binary_txt)
                 return # tady bude return payload vrchniho uzlu ( a pro acko i return soucet vsech verzi)
         else:
             rest = current_node.parse_operators()    # ZA TENTO RADEK DAT FUNKCI HAS SPACE - TA JE ZAKLAD PRO STAVENI STRUKTURY STROMU
+            print(current_node.id_number, 'limit_len ', current_node.limit_lenght, 'no_packets', current_node.limit_no_packets, 'delka rest: ', len(rest))
+            current_parent = current_node
             binary_txt = rest
+    print('zerossssssssss: ', binary_txt)
     return
 print(f(input_binary))
 
@@ -267,6 +296,7 @@ def traverse(node):
                     current_node = child   # ... a teprve pak se vyadat o uroven niz
 
     return node.payload
+
 
 
 
