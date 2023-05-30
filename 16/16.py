@@ -25,24 +25,19 @@ b4 = 'CE00C43D881120'
 b5 = 'D8005AC2A8F0'
 b6 = 'F600BC2D8F'
 b6 = '9C005AC2F8F0'
-b7 = '9C0141080250320F1802104A08'
+b7 = '9C0141080250320F1802104A08'   # toci se donekonecna
 
 # real input
 with open('16_input.txt', encoding = 'utf-8-sig') as txt:
     txt = txt.readlines()
     txt = txt[0][:-1]
 
-input_txt = b7
+input_txt = txt
 
 def get_binary_txt(hex_txt = input_txt):
     bin_txt = bin(int(hex_txt, 16))
-    # print(bin_txt)
     bin_txt = bin_txt[2:]
-    # print(bin_txt)
     first_bit = bin(int(hex_txt[0], 16))[2:]
-    # print(int(hex_txt[0], 16))
-    # print(bin(int(hex_txt[0], 16)))
-    # print(first_bit)
     if len(first_bit) == 3:
         bin_txt = '0'+bin_txt
     elif len(first_bit) == 2:
@@ -69,11 +64,11 @@ def is_zeros(chunks_of_binary_txt):  # a few lines are likely redundant
 def parse_head(bin_txt):
     version = bin_txt[:3]
     version = int(version, 2)
+    version = random.randint(0, 100)    # smazat
     id_number = bin_txt[3:6]
     id_number = int(id_number, 2)
     id_index_end = 5
     after_head = bin_txt[(id_index_end + 1):]
-    # print(id_number, after_head)
     return version, id_number, after_head
 
 def get_payload(rest):
@@ -90,11 +85,9 @@ def get_payload(rest):
             else:
                 unused_chunks = ''.join(chunks[(ind+1):])
             payload = ''.join(payload)
-            packet_lenght = len(payload) + 1 + 6 # head lenght
+            packet_length = len(payload) + 1 + 6 # head length
             payload = int(payload, 2)
-            return payload, unused_chunks, packet_lenght
-
-
+            return payload, unused_chunks, packet_length
 
 
 def skip_operators(rest):
@@ -140,8 +133,6 @@ def do_id_maths(literal_payload, id_n):
         else:
             return 0
 
-tree = []
-
 class Tree_node:
     def __init__(self, version, id_number, after_head):
         self.version = version
@@ -149,74 +140,104 @@ class Tree_node:
         self.after_head = after_head
         self.children = []
         self.parent = None
+        self.packet_length = 0
         if self.id_number == 4:
             self.has_space = False
+            self.limit_length = 0
+            self.limit_no_packets = 0
         else:
             self.has_space = True
-        self.limit_lenght = lambda id_number: 0 if id_number == 4 else 1000
-        self.limit_no_packets = lambda id_number: 0 if id_number == 4 else 1000
+            self.limit_length = 10000
+            self.limit_no_packets = 10000
+
 
 
     def add_child(self, child_node):
         assert self.has_space == True
-        print("Adding ", child_node.id_number, 'to', self.id_number)
+        print("Adding ", child_node.version, 'to', self.version)
         self.children.append(child_node)
-        self.limit_lenght -= child_node.packet_lenght
+        self.limit_length -= child_node.packet_length
         self.limit_no_packets -= 1
         child_node.parent = self
 
     def apply_limit(self, child):
         if self.limit_no_packets <= 0:
             self.has_space = False
-        if self.limit_lenght < child.packet_lenght:
+        if self.limit_length < child.packet_length:
             self.has_space = False
-        print(self.id_number, 'has space? ', self.has_space, self.limit_lenght, self.limit_no_packets)
+        print(self.version, 'has space? ', self.has_space, self.limit_length, self.limit_no_packets)
 
     def add_to_newly_found_parent(self, current_parent):
         assert (current_parent.id_number != 4 and current_parent.has_space == False)
-        while current_parent.parent != None:
+        while current_parent.parent != root:
+            print('current_parent.version ', current_parent.version)
             current_parent.parent.apply_limit(self)
             if current_parent.parent.has_space == True:
                 current_parent = current_parent.parent
                 current_parent.add_child(self)
-        print("Adding ", self.id_number, 'to', current_parent.id_number)
+        print("Adding ", self.version, 'to', current_parent.version)
 
     def add_to_tree(self, current_parent):
         current_parent.apply_limit(self)
         if current_parent.has_space == True:
             current_parent.add_child(self)
         else:
+            print('wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww')
             self.add_to_newly_found_parent(current_parent)
 
-    def parse_operators(node):
-        assert node.id_number != 4
-        if node.after_head[0] == '0':
-            node.limit_lenght = int(node.after_head[1:16], 2)
-            node.limit_no_packets = 1000
-            rest = node.after_head[16:]
+    def parse_operators(self):
+        assert self.id_number != 4
+        if self.after_head[0] == '0':
+            self.limit_length = int(self.after_head[1:16], 2)
+            self.limit_no_packets = 10000
+            rest = self.after_head[16:]
         else:
-            node.limit_no_packets = int(node.after_head[1:12], 2)
-            node.limit_lenght = 1000
-            rest = node.after_head[12:]
+            self.limit_no_packets = int(self.after_head[1:12], 2)
+            self.limit_length = 10000
+            rest = self.after_head[12:]
         return rest
 
-# root = Tree_node('root', [], None, input_binary, 0)
+    def get_packet_length(self):
+        current_packet = self
+        l = []
+        while is_zeros(current_packet.after_head) != True:
+            while current_packet.id_number != 4:     # do l pridej delku obalky a opakuj kolecko se retezcem zmensenym o obalku
+                res = current_packet.parse_operators()
+                if current_packet.after_head[0] == '0':
+                    l.append(15 + 1 + 6)
+                else:
+                    l.append(11 + 1 + 6)
+                v, id_nu, after_head = parse_head(res)
+                current_packet = Tree_node(v, id_nu, after_head)  # protoze vstup musi byt ve formatu tree_node
+
+            p, u, packet_length = get_payload(after_head)
+            l.append(packet_length)
+            self.packet_length = sum(l)
+            if is_zeros(u) == False:
+                v, id_nu, after_head = parse_head(u)
+                current_packet = Tree_node(v, id_nu, after_head)
+            else:
+                # print('l', l, sum(l), self.packet_length)
+                return self.packet_length
+
+
+
+
+
+root = Tree_node('root', 'root', 'root')
 
 
 
 # b
 
-def f(binary_txt):
-    current_parent = None
-    while is_zeros(binary_txt) == False:
-        if current_parent != None:
-            print('current parent ', current_parent.id_number)
-        version, id_number, after_head = parse_head(binary_txt)   # after_head = payload_lenght + rest
-        tree.append(Tree_node(version, id_number, after_head))
-        current_node = tree[-1]
+def f(binary_txt, current_parent):
+    while True:
+        print('current parent ', current_parent.version)
+        version, id_number, after_head = parse_head(binary_txt)
+        current_node = Tree_node(version, id_number, after_head)
         if current_node.id_number == 4:
-            current_node.payload, current_node.rest, current_node.packet_lenght = get_payload(after_head)
-            print('payload ', current_node.payload, 'lenght of packet: ', current_node.packet_lenght, 'zbyva bitu: ', len(current_node.rest))  # rovnou ve funkci to prekodovat
+            current_node.payload, current_node.rest, current_node.packet_length = get_payload(after_head)
+            print('payload ', current_node.payload, 'length of packet: ', current_node.packet_length, 'zbyva bitu: ', len(current_node.rest))  # rovnou ve funkci to prekodovat
             # print('current node rest ', current_node.rest)
             current_node.add_to_tree(current_parent)
 
@@ -225,15 +246,22 @@ def f(binary_txt):
             else:
                 binary_txt = current_node.rest
                 print('zerossssssssss: ', binary_txt)
-                return # tady bude return payload vrchniho uzlu ( a pro acko i return soucet vsech verzi)
+                return
         else:
-            rest = current_node.parse_operators()    # ZA TENTO RADEK DAT FUNKCI HAS SPACE - TA JE ZAKLAD PRO STAVENI STRUKTURY STROMU
-            print(current_node.id_number, 'limit_len ', current_node.limit_lenght, 'no_packets', current_node.limit_no_packets, 'delka rest: ', len(rest))
+            rest = current_node.parse_operators()
+            print('current node ', current_node.version, 'limit_len ', current_node.limit_length, 'no_packets', current_node.limit_no_packets, 'delka rest: ', len(rest))
+            if current_node.limit_length < 5000:
+                current_node.packet_length = current_node.limit_length + (6 + 1 + 15)
+            else:
+                # current_node.packet_length  = current_node.get_packet_length()    # toto je nove, proverit
+                current_node.packet_length = 6 + 1 + 11
+                print(current_node.packet_length)
+            current_node.add_to_tree(current_parent)
             current_parent = current_node
             binary_txt = rest
     print('zerossssssssss: ', binary_txt)
     return
-print(f(input_binary))
+print(f(input_binary, root))
 
 
 """
@@ -254,9 +282,9 @@ def f(binary_txt):
                 for ch in root.children:
                     return ch.payload
         else:
-            rest, lenght, no_packets = parse_operators(rest_of_packet)
+            rest, length, no_packets = parse_operators(rest_of_packet)
             current_tree_node = Tree_node(id_number, None, None, rest, rest_of_packet)
-            current_tree_node.limit_lenght = lenght
+            current_tree_node.limit_length = length
             current_tree_node.limit_no_packets = no_packets
             print('--')
             print(current_tree_node.rest)

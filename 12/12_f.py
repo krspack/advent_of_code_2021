@@ -1,7 +1,7 @@
 
 from collections import defaultdict
 
-with open('test_input_1.txt', encoding = 'utf-8-sig') as txt:
+with open('12_input.txt', encoding = 'utf-8-sig') as txt:
     edges = txt.readlines()
     edges = [x.strip('\n') for x in edges]
     edges = [x.split('-') for x in edges]

@@ -20,9 +20,9 @@ def get_couples(formula = initial_substance, insertions = insertions):
     return couples
 first_couples = get_couples()
 
+
 def insert(couples, n, insertions = insertions):
     new_couples = []
-    # print('x', n, couples, new_couples)
     if n == 0:
         couples = [couples[0][0]]+[x[1] for x in couples]
         return ''.join(couples[:])
@@ -31,7 +31,6 @@ def insert(couples, n, insertions = insertions):
             new_couples.append([couple[0], insertions.get(couple)])
             new_couples.append([insertions.get(couple), couple[1]])
         new_couples = [''.join(x[:]) for x in new_couples]
-        # print('y', n, couples, new_couples)
         return insert(new_couples, n-1)
 new_formula = insert(first_couples, 10)
 
