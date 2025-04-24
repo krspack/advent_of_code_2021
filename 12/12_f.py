@@ -1,7 +1,7 @@
 
 from collections import defaultdict
 
-# version B. See lines 24 and 72 for version A.
+# version B. See lines 25 and 72 for version A.
 # =============================================
 
 with open('12_input.txt', encoding = 'utf-8-sig') as txt:
